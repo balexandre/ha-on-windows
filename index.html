@@ -4,138 +4,148 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Home Assistant on Windows</title>
-<style>
-  :root {
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --text: #1d2430;
-    --muted: #5b6575;
-    --border: #e2e6ec;
-    --accent: #0b7bd6;
-    --accent-soft: #e6f2fc;
-    --code-bg: #10161f;
-    --code-text: #e6edf6;
-    --warn: #9a6200;
-    --warn-soft: #fff6e0;
-    --ok: #1d7a46;
-    --ok-soft: #e5f6ec;
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#0284c7">
+<script>
+  // Apply the saved theme before the page paints, so there's no flash.
+  (function () {
+    var mode = 'system';
+    try { mode = localStorage.getItem('theme') || 'system'; } catch (e) {}
+    var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @layer base {
+    body { @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200; }
+    h2 { @apply text-[22px] font-bold text-slate-900 mb-2 dark:text-white; }
+    h3 { @apply text-[17px] font-semibold text-slate-900 mt-5 mb-1.5 dark:text-white; }
+    p { @apply my-3; }
+    a { @apply text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-400 dark:hover:text-sky-300; }
+    :not(pre) > code { @apply font-mono text-[14px] rounded bg-sky-50 px-1.5 py-0.5 text-slate-800 dark:bg-sky-950/70 dark:text-slate-100; }
+    kbd { @apply rounded border border-b-2 border-slate-300 bg-slate-100 px-1.5 text-[13px] font-sans dark:border-slate-600 dark:bg-slate-800; }
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f141b;
-      --card: #171e28;
-      --text: #e6ebf2;
-      --muted: #9aa5b5;
-      --border: #273140;
-      --accent: #4aa8f0;
-      --accent-soft: #15283b;
-      --code-bg: #0a0e14;
-      --code-text: #e6edf6;
-      --warn: #f3c164;
-      --warn-soft: #2c2412;
-      --ok: #6fd39a;
-      --ok-soft: #13291d;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font: 16px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-  }
-  main { max-width: 820px; margin: 0 auto; padding: 40px 16px 80px; }
-  header { margin-bottom: 32px; }
-  header p { color: var(--muted); margin: 8px 0 0; font-size: 18px; }
-  h1 { font-size: 34px; line-height: 1.2; margin: 0; }
-  h2 { font-size: 22px; margin: 0 0 8px; }
-  h3 { font-size: 17px; margin: 20px 0 6px; }
-  a { color: var(--accent); }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    margin: 0 0 20px;
-  }
-  .step { display: grid; grid-template-columns: 40px 1fr; gap: 16px; }
-  .num {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--accent); color: #fff;
-    display: grid; place-items: center; font-weight: 700; font-size: 18px;
-  }
-  .step > div { min-width: 0; }
-  .step p:first-of-type { margin-top: 0; }
-  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 16px; }
-  .summary div { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
-  .summary b { display: block; font-size: 15px; }
-  .summary span { color: var(--muted); font-size: 14px; }
-  .code {
-    position: relative;
-    background: var(--code-bg);
-    color: var(--code-text);
-    border-radius: 10px;
-    margin: 12px 0;
-  }
-  .code pre {
-    margin: 0; padding: 16px 16px 16px 16px;
-    overflow-x: auto;
-    font: 14px/1.55 "Cascadia Code", Consolas, "SFMono-Regular", monospace;
-  }
-  .code .label {
-    display: block; padding: 8px 16px 0;
-    font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #8b98aa;
-  }
-  .copy {
-    position: absolute; top: 8px; right: 8px;
-    background: #253042; color: #e6edf6;
-    border: 1px solid #364357; border-radius: 6px;
-    padding: 4px 10px; font: 13px "Segoe UI", system-ui, sans-serif; cursor: pointer;
-  }
-  .copy:hover { background: #2f3c52; }
-  .note, .expect {
-    border-radius: 10px; padding: 12px 16px; margin: 14px 0; font-size: 15px;
-  }
-  .note { background: var(--warn-soft); border-left: 4px solid var(--warn); }
-  .expect { background: var(--ok-soft); border-left: 4px solid var(--ok); }
-  .note > b:first-child, .expect > b:first-child { display: block; margin-bottom: 2px; }
-  kbd {
-    font: 13px "Segoe UI", system-ui, sans-serif;
-    border: 1px solid var(--border); border-bottom-width: 2px;
-    border-radius: 4px; padding: 1px 6px; background: var(--bg);
-  }
-  code { font: 14px Consolas, "Cascadia Code", monospace; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
-  td code { white-space: nowrap; }
-  .table-wrap { overflow-x: auto; }
-  ul { padding-left: 22px; }
-  li { margin: 4px 0; }
-  footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 32px; }
-  @media (max-width: 560px) {
-    h1 { font-size: 27px; }
-    .card { padding: 18px; }
-    .step { grid-template-columns: 1fr; gap: 10px; }
+
+  @layer components {
+    .card { @apply mb-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm max-sm:p-[18px] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none; }
+    .step { @apply grid grid-cols-[40px_1fr] gap-4 max-sm:grid-cols-1 max-sm:gap-2.5; }
+    .step > div { @apply min-w-0; }
+    .num { @apply grid size-10 place-items-center rounded-full bg-sky-600 text-lg font-bold text-white dark:bg-sky-500; }
+    .expect, .note { @apply my-3.5 rounded-lg border-l-4 px-4 py-3 text-[15px]; }
+    .expect { @apply border-emerald-600 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-950/40; }
+    .note { @apply border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/30; }
+    .callout-title { @apply mb-0.5 block font-semibold text-slate-900 dark:text-white; }
+    .codeblock { @apply relative my-3 rounded-lg bg-slate-900 text-slate-100 dark:bg-black/50 dark:ring-1 dark:ring-slate-800; }
+    .codeblock pre { @apply m-0 overflow-x-auto p-4 pt-1 font-mono text-sm leading-relaxed; }
+    .code-label { @apply block px-4 pt-2 text-xs uppercase tracking-wider text-slate-400; }
+    .copy-btn { @apply absolute right-2 top-2 cursor-pointer rounded-md border border-slate-600 bg-slate-800 px-2.5 py-1 font-sans text-[13px] text-slate-100 hover:bg-slate-700; }
+    .bullets { @apply list-disc space-y-1 pl-6; }
+    .tbl { @apply w-full border-collapse text-[15px]; }
+    .tbl th { @apply border-b border-slate-200 px-2 py-2.5 text-left text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400; }
+    .tbl td { @apply border-b border-slate-200 px-2 py-2.5 align-top dark:border-slate-800; }
+    .tbl td code { @apply whitespace-nowrap; }
+    .hint { @apply text-slate-500 dark:text-slate-400; }
   }
 </style>
-</head>
-<body>
-<main>
+<script>
+  function themePicker() {
+    return {
+      mode: 'system',
+      init() {
+        try { this.mode = localStorage.getItem('theme') || 'system'; } catch (e) {}
+        this.mq = window.matchMedia('(prefers-color-scheme: dark)');
+        this.mq.addEventListener('change', () => this.apply());
+        this.apply();
+      },
+      set(mode) {
+        this.mode = mode;
+        try {
+          if (mode === 'system') localStorage.removeItem('theme');
+          else localStorage.setItem('theme', mode);
+        } catch (e) {}
+        this.apply();
+      },
+      apply() {
+        const dark = this.mode === 'dark' || (this.mode === 'system' && this.mq.matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      },
+    };
+  }
 
-<header>
-  <h1>Home Assistant on Windows</h1>
-  <p>Try Home Assistant on your own PC with Docker Desktop and PowerShell, before buying any hardware.</p>
-  <div class="summary">
-    <div><b>About 30 minutes</b><span>most of it is downloading</span></div>
-    <div><b>Free</b><span>Docker Desktop is free for home use</span></div>
-    <div><b>Easy to undo</b><span>one folder and one container</span></div>
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); resolve(); } catch (e) { reject(e); }
+      document.body.removeChild(ta);
+    });
+  }
+
+  // Shared behaviour for every code block's Copy button.
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('codeBlock', () => ({
+      copied: false,
+      copy() {
+        copyText(this.$refs.code.innerText).then(() => {
+          this.copied = true;
+          setTimeout(() => (this.copied = false), 1500);
+        });
+      },
+    }));
+  });
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</head>
+<body class="font-sans text-base leading-relaxed">
+<main class="mx-auto max-w-[820px] px-4 pb-20 pt-10">
+
+<header class="mb-8">
+  <div class="flex flex-wrap-reverse items-start justify-between gap-4">
+    <h1 class="text-[34px] font-bold leading-tight text-slate-900 max-sm:text-[27px] dark:text-white">Home Assistant on Windows</h1>
+
+    <div x-data="themePicker()" role="radiogroup" aria-label="Color theme"
+         class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <template x-for="opt in [
+          { id: 'light', label: 'Light', icon: 'M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364-1.414 1.414M7.05 16.95l-1.414 1.414m12.728 0-1.414-1.414M7.05 7.05 5.636 5.636M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z' },
+          { id: 'dark', label: 'Dark', icon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z' },
+          { id: 'system', label: 'System', icon: 'M4 5h16v11H4zM8 20h8M12 16v4' }
+        ]" :key="opt.id">
+        <button type="button" role="radio" :aria-checked="mode === opt.id" @click="set(opt.id)"
+                class="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                :class="mode === opt.id
+                  ? 'bg-sky-600 text-white dark:bg-sky-500'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path :d="opt.icon"></path>
+          </svg>
+          <span x-text="opt.label"></span>
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <p class="mt-2 text-lg text-slate-500 dark:text-slate-400">Try Home Assistant on your own PC with Docker Desktop and PowerShell, before buying any hardware.</p>
+
+  <div class="mt-4 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+    <div class="rounded-lg bg-sky-50 px-3.5 py-3 dark:bg-sky-950/50"><b class="block text-[15px] text-slate-900 dark:text-white">About 30 minutes</b><span class="text-sm text-slate-500 dark:text-slate-400">most of it is downloading</span></div>
+    <div class="rounded-lg bg-sky-50 px-3.5 py-3 dark:bg-sky-950/50"><b class="block text-[15px] text-slate-900 dark:text-white">Free</b><span class="text-sm text-slate-500 dark:text-slate-400">Docker Desktop is free for home use</span></div>
+    <div class="rounded-lg bg-sky-50 px-3.5 py-3 dark:bg-sky-950/50"><b class="block text-[15px] text-slate-900 dark:text-white">Easy to undo</b><span class="text-sm text-slate-500 dark:text-slate-400">one folder and one container</span></div>
   </div>
 </header>
 
 <section class="card">
   <h2>Before you start</h2>
-  <ul>
+  <ul class="bullets">
     <li>Windows 10 (22H2) or Windows 11, with administrator rights.</li>
     <li>About 5 GB free disk space.</li>
     <li>The PC must stay on while you use Home Assistant. If it sleeps or shuts down, so does Home Assistant.</li>
@@ -147,12 +157,12 @@
   <div class="num">1</div>
   <div>
     <h2>Install Docker Desktop</h2>
-    <p>Download it from <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a> and run the installer. Keep the default options, including <b>“Use WSL 2”</b>. Docker uses this behind the scenes; you never have to open it yourself.</p>
+    <p class="mt-0">Download it from <a href="https://www.docker.com/products/docker-desktop/">docker.com/products/docker-desktop</a> and run the installer. Keep the default options, including <b>“Use WSL 2”</b>. Docker uses this behind the scenes; you never have to open it yourself.</p>
     <p>Restart the PC when asked, then open <b>Docker Desktop</b> from the Start menu. Accept the terms. You can skip signing in.</p>
-    <div class="expect"><b>What to expect</b>The first start can take a couple of minutes. It may ask to install or update WSL; say yes. When the whale icon in the taskbar tray stops animating and Docker Desktop shows <i>“Engine running”</i>, it's ready.</div>
-    <div class="note"><b>If it complains about virtualization</b>Virtualization is switched off in the PC's BIOS/UEFI settings. Look for <i>Intel VT-x</i>, <i>Intel Virtualization Technology</i> or <i>AMD SVM</i>, switch it on, and restart.</div>
+    <div class="expect"><b class="callout-title">What to expect</b>The first start can take a couple of minutes. It may ask to install or update WSL; say yes. When the whale icon in the taskbar tray stops animating and Docker Desktop shows <i>“Engine running”</i>, it's ready.</div>
+    <div class="note"><b class="callout-title">If it complains about virtualization</b>Virtualization is switched off in the PC's BIOS/UEFI settings. Look for <i>Intel VT-x</i>, <i>Intel Virtualization Technology</i> or <i>AMD SVM</i>, switch it on, and restart.</div>
     <p>Check that Docker works. Open PowerShell and run:</p>
-    <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>docker version</pre></div>
+    <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">docker version</pre></div>
     <p>You should see a <b>Client</b> and a <b>Server</b> section. If it says the command isn't found, close PowerShell and open it again.</p>
   </div>
 </section>
@@ -161,10 +171,10 @@
   <div class="num">2</div>
   <div>
     <h2>Create a folder for Home Assistant's settings</h2>
-    <p>Everything Home Assistant saves (your account, devices, dashboards) goes in this folder, so it survives restarts and updates.</p>
+    <p class="mt-0">Everything Home Assistant saves (your account, devices, dashboards) goes in this folder, so it survives restarts and updates.</p>
     <p><i>Prefer fewer commands? The <a href="#script">ha.ps1 script</a> below does steps 2–4 for you.</i></p>
-    <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>New-Item -ItemType Directory -Force "$env:USERPROFILE\HomeAssistant\config"</pre></div>
-    <div class="expect"><b>What to expect</b>A new folder <code>C:\Users\&lt;you&gt;\HomeAssistant\config</code>. It's empty for now; Home Assistant fills it on first start.</div>
+    <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">New-Item -ItemType Directory -Force "$env:USERPROFILE\HomeAssistant\config"</pre></div>
+    <div class="expect"><b class="callout-title">What to expect</b>A new folder <code>C:\Users\&lt;you&gt;\HomeAssistant\config</code>. It's empty for now; Home Assistant fills it on first start.</div>
   </div>
 </section>
 
@@ -172,15 +182,15 @@
   <div class="num">3</div>
   <div>
     <h2>Start Home Assistant</h2>
-    <p>Paste the whole block into PowerShell and press <kbd>Enter</kbd>. If you don't live in Denmark, change <code>Europe/Copenhagen</code> to your own time zone first, e.g. <code>Europe/Lisbon</code> or <code>Europe/London</code>.</p>
-    <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>docker run -d `
+    <p class="mt-0">Paste the whole block into PowerShell and press <kbd>Enter</kbd>. If you don't live in Denmark, change <code>Europe/Copenhagen</code> to your own time zone first, e.g. <code>Europe/Lisbon</code> or <code>Europe/London</code>.</p>
+    <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">docker run -d `
   --name homeassistant `
   --restart=unless-stopped `
   -e TZ=Europe/Copenhagen `
   -v "$env:USERPROFILE\HomeAssistant\config:/config" `
   -p 8123:8123 `
   ghcr.io/home-assistant/home-assistant:stable</pre></div>
-    <div class="expect"><b>What to expect</b>Docker first downloads Home Assistant, about 1–2 GB, with progress bars. Then it prints one long line of letters and numbers: that's the new container's ID, and it means Home Assistant is starting. Docker Desktop's <b>Containers</b> tab now shows <code>homeassistant</code> with a green dot.</div>
+    <div class="expect"><b class="callout-title">What to expect</b>Docker first downloads Home Assistant, about 1–2 GB, with progress bars. Then it prints one long line of letters and numbers: that's the new container's ID, and it means Home Assistant is starting. Docker Desktop's <b>Containers</b> tab now shows <code>homeassistant</code> with a green dot.</div>
     <p>The backticks <code>`</code> at the end of the lines tell PowerShell that the command continues on the next line. This is the only time you need this long command.</p>
   </div>
 </section>
@@ -189,17 +199,17 @@
   <div class="num">4</div>
   <div>
     <h2>Open Home Assistant and create your account</h2>
-    <p>Wait 1–3 minutes, then open <a href="http://localhost:8123">http://localhost:8123</a> in your browser.</p>
-    <div class="expect"><b>What to expect</b>
+    <p class="mt-0">Wait 1–3 minutes, then open <a href="http://localhost:8123">http://localhost:8123</a> in your browser.</p>
+    <div class="expect"><b class="callout-title">What to expect</b>
       First you may see <i>“Preparing Home Assistant”</i> or a page that won't load yet. That's normal on the first start; refresh after a minute. Then the welcome screen asks you to:
-      <ul>
+      <ul class="bullets mt-2">
         <li><b>Create your user</b>: name, username and password. This account only exists on your PC.</li>
         <li><b>Set your home location</b>: used for weather, sunrise and sunset.</li>
         <li><b>Choose analytics</b>: sharing is optional.</li>
         <li><b>See devices it found</b>, if any (see “Adding your devices” below).</li>
       </ul>
     </div>
-    <div class="note"><b>Windows Firewall pop-up</b>Windows may ask whether Docker can use the network. Tick <b>Private networks</b> and click <b>Allow</b>. This also lets you open Home Assistant from your phone (see below).</div>
+    <div class="note"><b class="callout-title">Windows Firewall pop-up</b>Windows may ask whether Docker can use the network. Tick <b>Private networks</b> and click <b>Allow</b>. This also lets you open Home Assistant from your phone (see below).</div>
   </div>
 </section>
 
@@ -207,8 +217,8 @@
   <div class="num">5</div>
   <div>
     <h2>Adding your devices</h2>
-    <p>Go to <b>Settings → Devices &amp; services</b>. Devices Home Assistant found show up under <b>Discovered</b>; click <b>Add</b> on each. To add something else, click <b>+ Add integration</b> (bottom right) and search for the brand: Philips Hue, Sonos, Shelly, Google Cast, IKEA, TP-Link and so on.</p>
-    <div class="note"><b>Most devices won't be discovered automatically</b>
+    <p class="mt-0">Go to <b>Settings → Devices &amp; services</b>. Devices Home Assistant found show up under <b>Discovered</b>; click <b>Add</b> on each. To add something else, click <b>+ Add integration</b> (bottom right) and search for the brand: Philips Hue, Sonos, Shelly, Google Cast, IKEA, TP-Link and so on.</p>
+    <div class="note"><b class="callout-title">Most devices won't be discovered automatically</b>
       Docker Desktop keeps Home Assistant in its own small private network, so the “I'm here” announcements from Hue, Sonos, Chromecast and similar don't reach it. They still work: add them by hand with <b>+ Add integration</b>, and when asked, type the device's IP address. You can find these in your router's list of connected devices, or in the device's own app (e.g. Hue app → Settings → Hue Bridges → ⓘ).
     </div>
     <p>Cloud-based brands (e.g. Google Nest, Tuya/Smart Life, Netatmo) don't need discovery: you sign in with that brand's account.</p>
@@ -219,11 +229,11 @@
   <h2>Shortcut: the <code>ha.ps1</code> script</h2>
   <p><a href="ha.ps1" download>ha.ps1</a> does steps 2–4 and everything under “Everyday use” with short commands. It starts Docker Desktop if it isn't running, creates Home Assistant the first time, waits until it's ready, and opens it in your browser.</p>
   <p>Put <code>ha.ps1</code> in <code>C:\Users\&lt;you&gt;\HomeAssistant</code>, then in PowerShell:</p>
-  <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>cd "$env:USERPROFILE\HomeAssistant"
+  <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">cd "$env:USERPROFILE\HomeAssistant"
 powershell -ExecutionPolicy Bypass -File .\ha.ps1 start</pre></div>
-  <div class="expect"><b>What to expect</b>The first time, it downloads Home Assistant and prints dots while it waits for it to start. When it's ready, it prints the addresses for this PC and your phone, and opens your browser.</div>
-  <div class="table-wrap">
-  <table>
+  <div class="expect"><b class="callout-title">What to expect</b>The first time, it downloads Home Assistant and prints dots while it waits for it to start. When it's ready, it prints the addresses for this PC and your phone, and opens your browser.</div>
+  <div class="overflow-x-auto">
+  <table class="tbl">
     <thead><tr><th>Command</th><th>What it does</th></tr></thead>
     <tbody>
       <tr><td><code>start</code></td><td>Create (first time) or start Home Assistant, then open it</td></tr>
@@ -237,8 +247,8 @@ powershell -ExecutionPolicy Bypass -File .\ha.ps1 start</pre></div>
     </tbody>
   </table>
   </div>
-  <div class="note"><b>Why the long “-ExecutionPolicy Bypass” part?</b>Windows blocks scripts by default. That part allows just this one run. To be able to type the short <code>.\ha.ps1 stop</code> from now on, run these two lines once. They allow scripts you created yourself, and unblock this downloaded one:
-    <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+  <div class="note"><b class="callout-title">Why the long “-ExecutionPolicy Bypass” part?</b>Windows blocks scripts by default. That part allows just this one run. To be able to type the short <code>.\ha.ps1 stop</code> from now on, run these two lines once. They allow scripts you created yourself, and unblock this downloaded one:
+    <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 Unblock-File "$env:USERPROFILE\HomeAssistant\ha.ps1"</pre></div>
   </div>
   <p>To change the time zone or port, open <code>ha.ps1</code> in Notepad and edit the lines under <i>“Settings you may want to change”</i> at the top.</p>
@@ -248,34 +258,34 @@ Unblock-File "$env:USERPROFILE\HomeAssistant\ha.ps1"</pre></div>
   <h2>Everyday use</h2>
   <p>Home Assistant starts by itself whenever Docker Desktop is running. To have it running after every reboot, turn on <b>Docker Desktop → Settings → General → “Start Docker Desktop when you sign in”</b>.</p>
   <p>The easiest way to stop and start it is the <code>ha.ps1</code> script above, or the <b>Containers</b> tab in Docker Desktop: use the ▶ and ■ buttons next to <code>homeassistant</code>. Or type the Docker commands in PowerShell yourself:</p>
-  <div class="table-wrap">
-  <table>
+  <div class="overflow-x-auto">
+  <table class="tbl">
     <thead><tr><th>To…</th><th>Run in PowerShell</th></tr></thead>
     <tbody>
       <tr><td>Stop</td><td><code>docker stop homeassistant</code></td></tr>
       <tr><td>Start again</td><td><code>docker start homeassistant</code></td></tr>
       <tr><td>Restart</td><td><code>docker restart homeassistant</code></td></tr>
-      <tr><td>Check if it's running</td><td><code>docker ps -a --filter name=homeassistant</code><br><span style="color:var(--muted)">“Up …” = running, “Exited” = stopped</span></td></tr>
-      <tr><td>See the log (when something is wrong)</td><td><code>docker logs -f --tail 100 homeassistant</code><br><span style="color:var(--muted)">press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop watching; Home Assistant keeps running</span></td></tr>
+      <tr><td>Check if it's running</td><td><code>docker ps -a --filter name=homeassistant</code><br><span class="hint">“Up …” = running, “Exited” = stopped</span></td></tr>
+      <tr><td>See the log (when something is wrong)</td><td><code>docker logs -f --tail 100 homeassistant</code><br><span class="hint">press <kbd>Ctrl</kbd>+<kbd>C</kbd> to stop watching; Home Assistant keeps running</span></td></tr>
     </tbody>
   </table>
   </div>
 
   <h3>Use it from your phone</h3>
   <p>Find the PC's address on your home network:</p>
-  <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq 'Dhcp' }).IPAddress</pre></div>
+  <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.PrefixOrigin -eq 'Dhcp' }).IPAddress</pre></div>
   <p>On a phone connected to the same Wi-Fi, open <code>http://&lt;that address&gt;:8123</code>, e.g. <code>http://192.168.1.25:8123</code>. Or install the <b>Home Assistant</b> app from the App Store or Google Play and enter the same address.</p>
 
   <h3>Update to the newest version</h3>
   <p>A new Home Assistant version comes out every month. To update, download the new version, remove the old container, then run the long command from step 3 again. Your settings are in the folder from step 2, so nothing is lost.</p>
-  <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>docker pull ghcr.io/home-assistant/home-assistant:stable
+  <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">docker pull ghcr.io/home-assistant/home-assistant:stable
 docker rm -f homeassistant</pre></div>
 </section>
 
 <section class="card">
   <h2>If something goes wrong</h2>
-  <div class="table-wrap">
-  <table>
+  <div class="overflow-x-auto">
+  <table class="tbl">
     <thead><tr><th>You see</th><th>Try this</th></tr></thead>
     <tbody>
       <tr><td><code>docker</code> isn't recognized, or “cannot connect to the Docker daemon”</td><td>Docker Desktop isn't running. Open it from the Start menu, wait for “Engine running”, then open a new PowerShell window.</td></tr>
@@ -290,7 +300,7 @@ docker rm -f homeassistant</pre></div>
 
 <section class="card">
   <h2>Good to know</h2>
-  <ul>
+  <ul class="bullets">
     <li><b>USB sticks (Zigbee, Z-Wave, Bluetooth) don't work in this setup.</b> Docker Desktop can't pass USB devices to Home Assistant. Wi-Fi and cloud devices are fine.</li>
     <li><b>This is for trying it out.</b> If you like it, a small always-on device (Home Assistant Green, a Raspberry Pi or a mini PC) is better: it uses little power, finds devices automatically and supports USB sticks and add-ons. You can move your setup over with a backup: <b>Settings → System → Backups</b>.</li>
     <li><b>Make a backup</b> of the <code>HomeAssistant</code> folder from time to time. That folder <i>is</i> your Home Assistant.</li>
@@ -298,37 +308,13 @@ docker rm -f homeassistant</pre></div>
 
   <h3>Remove everything</h3>
   <p>To remove the container and its download:</p>
-  <div class="code"><span class="label">PowerShell</span><button class="copy">Copy</button><pre>docker rm -f homeassistant
+  <div class="codeblock" x-data="codeBlock"><span class="code-label">PowerShell</span><button class="copy-btn" @click="copy()" x-text="copied ? 'Copied' : 'Copy'">Copy</button><pre x-ref="code">docker rm -f homeassistant
 docker image rm ghcr.io/home-assistant/home-assistant:stable</pre></div>
   <p>Then delete the folder <code>C:\Users\&lt;you&gt;\HomeAssistant</code>, and uninstall Docker Desktop from <b>Settings → Apps</b> if you don't need it anymore.</p>
 </section>
 
-<footer>Home Assistant documentation: <a href="https://www.home-assistant.io/installation/">home-assistant.io/installation</a></footer>
+<footer class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">Home Assistant documentation: <a href="https://www.home-assistant.io/installation/">home-assistant.io/installation</a></footer>
 
 </main>
-<script>
-  document.querySelectorAll('.copy').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var text = btn.parentElement.querySelector('pre').innerText;
-      function done() {
-        btn.textContent = 'Copied';
-        setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
-      }
-      function fallback() {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); done(); } catch (e) {}
-        document.body.removeChild(ta);
-      }
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(done, fallback);
-      } else {
-        fallback();
-      }
-    });
-  });
-</script>
 </body>
 </html>

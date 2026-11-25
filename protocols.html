@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Home Protocols</title>
+<meta name="description" content="Zigbee, Wi-Fi, Matter, Z-Wave, Thread and Bluetooth compared for Home Assistant, and what extra hardware you need.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#0284c7">
+<script>
+  // Apply the saved theme before the page paints, so there's no flash.
+  (function () {
+    var mode = 'system';
+    try { mode = localStorage.getItem('theme') || 'system'; } catch (e) {}
+    var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+  })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<style type="text/tailwindcss">
+  @custom-variant dark (&:where(.dark, .dark *));
+
+  @layer base {
+    body { @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-200; }
+    h2 { @apply text-[22px] font-bold text-slate-900 mb-2 dark:text-white; }
+    h3 { @apply text-[17px] font-semibold text-slate-900 mt-5 mb-1.5 dark:text-white; }
+    p { @apply my-3; }
+    a { @apply text-sky-700 underline underline-offset-2 hover:text-sky-900 dark:text-sky-400 dark:hover:text-sky-300; }
+    :not(pre) > code { @apply font-mono text-[14px] rounded bg-sky-50 px-1.5 py-0.5 text-slate-800 dark:bg-sky-950/70 dark:text-slate-100; }
+  }
+
+  @layer components {
+    .card { @apply mb-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm max-sm:p-[18px] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none; }
+    .expect, .note { @apply my-3.5 rounded-lg border-l-4 px-4 py-3 text-[15px]; }
+    .expect { @apply border-emerald-600 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-950/40; }
+    .note { @apply border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-950/30; }
+    .callout-title { @apply mb-0.5 block font-semibold text-slate-900 dark:text-white; }
+    .bullets { @apply list-disc space-y-1 pl-6; }
+    .tbl { @apply w-full border-collapse text-[15px]; }
+    .tbl th { @apply border-b border-slate-200 px-2 py-2.5 text-left text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400; }
+    .tbl td { @apply border-b border-slate-200 px-2 py-2.5 align-top dark:border-slate-800; }
+    .tbl td:first-child { @apply font-semibold text-slate-900 whitespace-nowrap dark:text-white; }
+    .hint { @apply text-slate-500 dark:text-slate-400; }
+    .facts { @apply my-3 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5; }
+    .facts > div { @apply rounded-lg bg-sky-50 px-3 py-2 dark:bg-sky-950/50; }
+    .facts b { @apply block text-[12px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400; }
+    .facts span { @apply text-[15px] text-slate-900 dark:text-white; }
+    .tag { @apply ml-2 inline-block rounded-full bg-slate-100 px-2 py-0.5 align-middle text-[12px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300; }
+    .toc { @apply flex flex-wrap gap-2; }
+    .toc a { @apply rounded-full border border-slate-200 bg-white px-3 py-1 text-sm no-underline text-slate-700 hover:border-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200; }
+  }
+</style>
+<script>
+  function themePicker() {
+    return {
+      mode: 'system',
+      init() {
+        try { this.mode = localStorage.getItem('theme') || 'system'; } catch (e) {}
+        this.mq = window.matchMedia('(prefers-color-scheme: dark)');
+        this.mq.addEventListener('change', () => this.apply());
+        this.apply();
+      },
+      set(mode) {
+        this.mode = mode;
+        try {
+          if (mode === 'system') localStorage.removeItem('theme');
+          else localStorage.setItem('theme', mode);
+        } catch (e) {}
+        this.apply();
+      },
+      apply() {
+        const dark = this.mode === 'dark' || (this.mode === 'system' && this.mq.matches);
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      },
+    };
+  }
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</head>
+<body class="font-sans text-base leading-relaxed">
+<main class="mx-auto max-w-[820px] px-4 pb-20 pt-10">
+
+<header class="mb-8">
+  <div class="flex flex-wrap-reverse items-start justify-between gap-4">
+    <h1 class="text-[34px] font-bold leading-tight text-slate-900 max-sm:text-[27px] dark:text-white">Smart home protocols</h1>
+
+    <div x-data="themePicker()" role="radiogroup" aria-label="Color theme"
+         class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <template x-for="opt in [
+          { id: 'light', label: 'Light', icon: 'M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364-1.414 1.414M7.05 16.95l-1.414 1.414m12.728 0-1.414-1.414M7.05 7.05 5.636 5.636M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z' },
+          { id: 'dark', label: 'Dark', icon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z' },
+          { id: 'system', label: 'System', icon: 'M4 5h16v11H4zM8 20h8M12 16v4' }
+        ]" :key="opt.id">
+        <button type="button" role="radio" :aria-checked="mode === opt.id" @click="set(opt.id)"
+                class="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+                :class="mode === opt.id
+                  ? 'bg-sky-600 text-white dark:bg-sky-500'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'">
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path :d="opt.icon"></path>
+          </svg>
+          <span x-text="opt.label"></span>
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <p class="mt-2 text-lg text-slate-500 dark:text-slate-400">How Zigbee, Wi-Fi, Matter, Z-Wave, Thread and Bluetooth differ, which one to pick when buying new devices for Home Assistant, and what extra hardware you need.</p>
+  <p class="text-sm"><a href="index.html">← Back to Home Assistant on Windows</a></p>
+
+  <nav class="toc mt-4" aria-label="On this page">
+    <a href="#compare">Comparison</a>
+    <a href="#wifi">Wi-Fi</a>
+    <a href="#zigbee">Zigbee</a>
+    <a href="#zwave">Z-Wave</a>
+    <a href="#thread">Thread</a>
+    <a href="#matter">Matter</a>
+    <a href="#bt">Bluetooth</a>
+    <a href="#buy">What to buy</a>
+    <a href="#hardware">Extra hardware</a>
+  </nav>
+</header>
+
+<section class="card">
+  <h2>The short version</h2>
+  <p class="mt-0">Five of these are <b>radios</b>: the way a device physically talks. <b>Matter</b> is different: it's a common <i>language</i> that runs on top of Wi-Fi, Thread or Ethernet, so any Matter device works with any Matter controller (Home Assistant, Apple, Google, Amazon).</p>
+  <ul class="bullets">
+    <li><b>Wi-Fi</b> and <b>Bluetooth</b> are the radios your phone already has. Home Assistant reaches Wi-Fi devices through your router.</li>
+    <li><b>Zigbee</b>, <b>Thread</b> and <b>Z-Wave</b> are low-power radios made for smart homes. Their devices form a <b>mesh</b>: plugged-in devices pass messages along, so the network gets stronger as you add more. Home Assistant needs a small USB radio (or a built-in one) to talk to them.</li>
+  </ul>
+  <div class="note"><b class="callout-title">Not on the Windows/Docker setup</b>Zigbee, Z-Wave, Thread and Bluetooth all need a USB radio, and Docker Desktop on Windows can't pass USB devices through. To use them, run Home Assistant on its own device (see <a href="#hardware">Extra hardware</a>).</div>
+</section>
+
+<section class="card" id="compare">
+  <h2>Side by side</h2>
+  <p class="mt-0 hint">Ranges are typical indoor figures through a wall or two. Walls, floors and metal change them a lot. Speeds are the radio's raw maximum; smart home messages are tiny, so speed rarely matters except for cameras.</p>
+  <div class="overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>Protocol</th><th>Speed</th><th>Range (one hop)</th><th>Network</th><th>Battery devices</th><th>Needs in HA</th></tr></thead>
+    <tbody>
+      <tr><td>Wi-Fi</td><td>10s–100s Mbit/s</td><td>30–50 m from the router</td><td>Star, via your router</td><td>Poor (hours–weeks)</td><td>Nothing, just the network</td></tr>
+      <tr><td>Zigbee</td><td>250 kbit/s</td><td>10–20 m</td><td>Mesh</td><td>Excellent (1–3 years)</td><td>Zigbee USB radio</td></tr>
+      <tr><td>Z-Wave</td><td>9.6–100 kbit/s</td><td>30–40 m<br><span class="hint">Long Range: up to ~1 km line of sight</span></td><td>Mesh (or LR star)</td><td>Excellent (1–3 years)</td><td>Z-Wave USB radio</td></tr>
+      <tr><td>Thread</td><td>250 kbit/s</td><td>10–20 m</td><td>Mesh (IPv6)</td><td>Excellent (1–3 years)</td><td>Thread border router</td></tr>
+      <tr><td>Matter</td><td>Same as the radio it uses</td><td>Same as the radio it uses</td><td>Over Wi-Fi, Thread or Ethernet</td><td>Over Thread, yes</td><td>Matter integration</td></tr>
+      <tr><td>Bluetooth LE</td><td>1–2 Mbit/s</td><td>5–10 m</td><td>Point to point</td><td>Very good (months–years)</td><td>Bluetooth adapter or proxy</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="overflow-x-auto mt-4">
+  <table class="tbl">
+    <thead><tr><th>Protocol</th><th>Frequency</th><th>Works without internet</th><th>Typical price per device</th></tr></thead>
+    <tbody>
+      <tr><td>Wi-Fi</td><td>2.4 GHz (most IoT), 5 GHz</td><td>Depends on the brand</td><td>Low</td></tr>
+      <tr><td>Zigbee</td><td>2.4 GHz</td><td>Yes</td><td>Lowest</td></tr>
+      <tr><td>Z-Wave</td><td>Sub-GHz: 868 MHz (EU), 908 MHz (US)</td><td>Yes</td><td>Highest</td></tr>
+      <tr><td>Thread</td><td>2.4 GHz</td><td>Yes</td><td>Medium</td></tr>
+      <tr><td>Matter</td><td>Depends on the radio</td><td>Yes, by design</td><td>Medium</td></tr>
+      <tr><td>Bluetooth LE</td><td>2.4 GHz</td><td>Yes</td><td>Low</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card" id="wifi">
+  <h2>Wi-Fi</h2>
+  <div class="facts">
+    <div><b>Speed</b><span>10s–100s Mbit/s</span></div>
+    <div><b>Range</b><span>30–50 m from the router</span></div>
+    <div><b>Power</b><span>Needs mains power</span></div>
+  </div>
+  <p><b>Used for:</b> cameras, video doorbells, smart plugs and relays (Shelly), speakers (Sonos, Google Cast), TVs, robot vacuums, and DIY sensors built with ESPHome.</p>
+  <p><b>How it differs:</b> it's the only option fast enough for video, and needs no extra hardware. But it uses far too much power for small battery sensors, and every device is one more client on your router; with 30–50+ devices a cheap router can struggle. Many Wi-Fi devices also depend on the maker's cloud.</p>
+  <p><b>When to use:</b> for things that are plugged in and either need bandwidth (cameras) or have a <b>local</b> integration in Home Assistant: Shelly, ESPHome, WLED, Sonos, Google Cast. Avoid cloud-only brands where you can; if their servers go down, so does your automation.</p>
+</section>
+
+<section class="card" id="zigbee">
+  <h2>Zigbee</h2>
+  <div class="facts">
+    <div><b>Speed</b><span>250 kbit/s</span></div>
+    <div><b>Range</b><span>10–20 m per hop</span></div>
+    <div><b>Power</b><span>Coin cell lasts years</span></div>
+  </div>
+  <p><b>Used for:</b> motion, door/window, temperature and leak sensors, buttons and remotes, bulbs, plugs, blinds. IKEA, Aqara, Philips Hue, Sonoff, Tuya Zigbee and many more.</p>
+  <p><b>How it differs:</b> a low-power mesh. Every plugged-in device (bulb, plug) is a <i>router</i> that relays messages for others, so range grows with every device you add. Battery devices are <i>end devices</i> that sleep most of the time. It's the biggest and cheapest smart home ecosystem, and Home Assistant supports it very well through the built-in <a href="https://www.home-assistant.io/integrations/zha/">ZHA integration</a> or <a href="https://www.zigbee2mqtt.io/">Zigbee2MQTT</a>.</p>
+  <p><b>When to use:</b> the default for battery sensors and buttons, and a great choice for lights and plugs. Brands sometimes stretch the standard, so check a device is supported before buying (the <a href="https://www.zigbee2mqtt.io/supported-devices/">Zigbee2MQTT device list</a> is a good reference).</p>
+  <div class="note"><b class="callout-title">Shares 2.4 GHz with Wi-Fi</b>Zigbee and Wi-Fi can interfere. Put the Zigbee radio on a USB extension cable away from the computer, and pick a Zigbee channel that doesn't overlap your Wi-Fi (Zigbee 15, 20 or 25 usually work well).</div>
+</section>
+
+<section class="card" id="zwave">
+  <h2>Z-Wave</h2>
+  <div class="facts">
+    <div><b>Speed</b><span>9.6–100 kbit/s</span></div>
+    <div><b>Range</b><span>30–40 m per hop; LR up to ~1 km</span></div>
+    <div><b>Power</b><span>Coin cell lasts years</span></div>
+  </div>
+  <p><b>Used for:</b> door locks, wall switches and dimmers, thermostats, sirens, garage doors, and sensors in larger houses or outbuildings.</p>
+  <p><b>How it differs:</b> it runs below 1 GHz, so it doesn't fight Wi-Fi and goes through walls better than the 2.4 GHz radios. Every device is certified, so different brands work together very reliably. <b>Z-Wave Long Range</b> devices talk directly to the hub over long distances, which is useful for sheds, gates and gardens. The downsides are higher prices and a smaller choice, especially in Europe. Home Assistant uses the <a href="https://www.home-assistant.io/integrations/zwave_js/">Z-Wave JS integration</a>.</p>
+  <p><b>When to use:</b> when reliability matters most (locks, alarms), in big houses with thick walls, or when you need range outdoors.</p>
+  <div class="note"><b class="callout-title">Frequencies are regional</b>A US Z-Wave device does not work on a European network, and the other way round. Buy the EU version (868 MHz) of both the USB radio and the devices if you live in Europe.</div>
+</section>
+
+<section class="card" id="thread">
+  <h2>Thread</h2>
+  <div class="facts">
+    <div><b>Speed</b><span>250 kbit/s</span></div>
+    <div><b>Range</b><span>10–20 m per hop</span></div>
+    <div><b>Power</b><span>Coin cell lasts years</span></div>
+  </div>
+  <p><b>Used for:</b> almost always as the radio underneath <a href="#matter">Matter</a>: sensors, plugs, bulbs, blinds, locks from Eve, Nanoleaf, IKEA (new range), Aqara and others.</p>
+  <p><b>How it differs:</b> technically a close cousin of Zigbee (same radio chip, same speed), but it speaks normal internet protocol (IPv6). A <b>border router</b> connects the Thread mesh to your home network. Border routers from different brands (Home Assistant, Apple TV/HomePod, Google Nest Hub, some Amazon Echos) can join the <i>same</i> Thread network, so you're not tied to one hub.</p>
+  <p><b>When to use:</b> you don't really choose Thread on its own; you choose a <b>Matter over Thread</b> device. To make Home Assistant a border router you need a radio flashed with Thread firmware (see <a href="#hardware">Extra hardware</a>). Docs: <a href="https://www.home-assistant.io/integrations/thread/">Thread integration</a>.</p>
+</section>
+
+<section class="card" id="matter">
+  <h2>Matter <span class="tag">not a radio</span></h2>
+  <div class="facts">
+    <div><b>Runs over</b><span>Wi-Fi, Thread, Ethernet</span></div>
+    <div><b>Setup</b><span>QR code, via Bluetooth</span></div>
+    <div><b>Control</b><span>Always local</span></div>
+  </div>
+  <p><b>Used for:</b> plugs, bulbs, switches, sensors, blinds, locks, thermostats, robot vacuums. More device types are added every release.</p>
+  <p><b>How it differs:</b> Matter is a shared standard backed by Apple, Google, Amazon, Samsung and others. A Matter device is controlled locally, without the maker's cloud, and it can be in several systems at once (<i>multi-admin</i>), e.g. Home Assistant and Apple Home together. You add it by scanning its QR code with the Home Assistant phone app; the phone uses Bluetooth for the first setup only. Home Assistant uses the <a href="https://www.home-assistant.io/integrations/matter/">Matter integration</a>.</p>
+  <p><b>When to use:</b> a good default for new devices: if a product has a Matter logo, it will work with Home Assistant and keep working if you ever change systems. Prefer <b>Matter over Thread</b> for battery devices, and <b>Matter over Wi-Fi</b> only for plugged-in ones.</p>
+  <div class="note"><b class="callout-title">Matter needs IPv6 and a flat network</b>Matter relies on IPv6 and multicast on your home network. Keep Home Assistant and your devices on the same network/VLAN, and don't disable IPv6 on your router.</div>
+</section>
+
+<section class="card" id="bt">
+  <h2>Bluetooth (BLE)</h2>
+  <div class="facts">
+    <div><b>Speed</b><span>1–2 Mbit/s</span></div>
+    <div><b>Range</b><span>5–10 m indoors</span></div>
+    <div><b>Power</b><span>Coin cell lasts months–years</span></div>
+  </div>
+  <p><b>Used for:</b> cheap thermometers (Xiaomi, Govee, Inkbird), plant sensors, SwitchBot devices, some locks, presence detection (is my phone or watch home?), and Matter's first-time setup.</p>
+  <p><b>How it differs:</b> short range and no mesh. To cover a whole house, use <b>Bluetooth proxies</b>: small ESP32 boards (around €10) that listen for Bluetooth nearby and forward it to Home Assistant over Wi-Fi or Ethernet. Home Assistant uses the <a href="https://www.home-assistant.io/integrations/bluetooth/">Bluetooth integration</a>.</p>
+  <p><b>When to use:</b> for specific devices that only come in Bluetooth, especially cheap temperature and humidity sensors. Not for lights or switches you rely on every day.</p>
+</section>
+
+<section class="card" id="buy">
+  <h2>Buying new devices for Home Assistant</h2>
+  <p class="mt-0">There's no single winner. Most good setups mix two or three. This order works well:</p>
+  <div class="overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>Device</th><th>Best choice</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Battery sensors, buttons</td><td>Zigbee, or Matter over Thread</td><td>Years on a coin cell, cheap, huge choice (Zigbee) or future-proof (Thread)</td></tr>
+      <tr><td>Bulbs, plugs, switches</td><td>Zigbee or Matter over Thread</td><td>They also strengthen the mesh for your sensors</td></tr>
+      <tr><td>Relays behind switches</td><td>Wi-Fi with local control (Shelly, ESPHome)</td><td>Cheap, fast, no cloud; or Zigbee/Z-Wave versions</td></tr>
+      <tr><td>Door locks</td><td>Z-Wave or Matter over Thread</td><td>Reliability and security matter most</td></tr>
+      <tr><td>Cameras, doorbells</td><td>Wi-Fi or Ethernet</td><td>The only options with enough bandwidth</td></tr>
+      <tr><td>Outbuildings, gardens, gates</td><td>Z-Wave Long Range, or Wi-Fi/Ethernet</td><td>Range</td></tr>
+      <tr><td>Cheap thermometers</td><td>Bluetooth + an ESPHome proxy</td><td>A few euros each</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="expect"><b class="callout-title">Our recommendation</b>
+    <ul class="bullets mt-1">
+      <li><b>Start with Zigbee</b> as your main low-power network. It's the cheapest, has the most devices, and Home Assistant supports it best today.</li>
+      <li><b>Prefer Matter (over Thread)</b> when a device you want offers it. It's local, works with every big platform, and is where the industry is going.</li>
+      <li><b>Use Wi-Fi only for plugged-in devices with a local integration</b>, and for cameras.</li>
+      <li><b>Add Z-Wave</b> only if you need its range or reliability, or already own Z-Wave devices.</li>
+    </ul>
+  </div>
+  <h3>Before buying any device, check</h3>
+  <ul class="bullets">
+    <li>Does it work <b>without the maker's cloud</b>? Look it up in the <a href="https://www.home-assistant.io/integrations/">Home Assistant integrations list</a>. “Local Push” or “Local Polling” is what you want.</li>
+    <li>Does it have the <a href="https://works-with.home-assistant.io/">Works with Home Assistant</a> badge? Those are tested by the Home Assistant team.</li>
+    <li>For Z-Wave: is it the right frequency for your country?</li>
+    <li>For a “Matter” device: is it Matter over <b>Thread</b> or over <b>Wi-Fi</b>? The box usually says.</li>
+  </ul>
+</section>
+
+<section class="card" id="hardware">
+  <h2>Extra hardware you may need</h2>
+  <p class="mt-0">Wi-Fi and Matter-over-Wi-Fi devices need nothing extra. For the others you need a radio. These are the official Home Assistant ones; they're set up automatically and get firmware updates through Home Assistant:</p>
+  <div class="overflow-x-auto">
+  <table class="tbl">
+    <thead><tr><th>For</th><th>Hardware</th><th>About</th></tr></thead>
+    <tbody>
+      <tr><td>Zigbee <i>or</i> Thread</td><td><a href="https://www.home-assistant.io/connect/zbt-2/">Home Assistant Connect ZBT-2</a></td><td>~$49. Replaces the older ZBT-1.</td></tr>
+      <tr><td>Z-Wave</td><td><a href="https://www.home-assistant.io/connect/zwa-2/">Home Assistant Connect ZWA-2</a></td><td>~$69. Supports Z-Wave Long Range. Choose your region.</td></tr>
+      <tr><td>Bluetooth</td><td><a href="https://esphome.io/projects/?type=bluetooth">ESPHome Bluetooth proxy</a> (any ESP32 board, e.g. M5Stack Atom Lite, or a ready-made PoE board)</td><td>~€10–30 each. Install from the browser, no coding.</td></tr>
+      <tr><td>Any USB radio</td><td>USB 2.0 extension cable, 0.5–1 m</td><td>~€5. Keeps the radio away from USB 3 and computer noise. Really helps.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note"><b class="callout-title">One radio = Zigbee <i>or</i> Thread</b>The ZBT-2 runs one of the two at a time. If you want both Zigbee and Thread, buy two of them (one flashed for each), or use an Apple TV, HomePod or Google Nest Hub you already have as the Thread border router.</div>
+
+  <h3>Home Assistant Green</h3>
+  <p><a href="https://www.home-assistant.io/green/">Home Assistant Green</a> has Ethernet and two USB ports, but <b>no smart home radios, no Bluetooth and no Wi-Fi</b>. (It doesn't need Wi-Fi to control Wi-Fi devices; it reaches them through your router.)</p>
+  <ul class="bullets">
+    <li>Zigbee: <a href="https://www.home-assistant.io/connect/zbt-2/">ZBT-2</a> + USB extension cable</li>
+    <li>Thread / Matter over Thread: a second <a href="https://www.home-assistant.io/connect/zbt-2/">ZBT-2</a> with Thread firmware, or an existing Apple/Google border router</li>
+    <li>Z-Wave: <a href="https://www.home-assistant.io/connect/zwa-2/">ZWA-2</a></li>
+    <li>Bluetooth: one or more <a href="https://esphome.io/projects/?type=bluetooth">ESPHome Bluetooth proxies</a></li>
+  </ul>
+
+  <h3>Home Assistant Yellow</h3>
+  <p><a href="https://www.home-assistant.io/yellow/">Home Assistant Yellow</a> already has a <b>built-in Zigbee/Thread radio</b> (one or the other, like the ZBT-2). <a href="https://www.home-assistant.io/blog/2025/10/15/yellow-end-of-life/">Production ended in October 2025</a>; it's still supported, but new buyers should get a Green or a mini PC instead.</p>
+  <ul class="bullets">
+    <li>Zigbee or Thread: built in. For both, add a <a href="https://www.home-assistant.io/connect/zbt-2/">ZBT-2</a> for the other one.</li>
+    <li>Z-Wave: <a href="https://www.home-assistant.io/connect/zwa-2/">ZWA-2</a></li>
+    <li>Bluetooth: built in only if your Compute Module has wireless (CM4/CM5 “W” versions). Otherwise, or for better coverage, <a href="https://esphome.io/projects/?type=bluetooth">ESPHome Bluetooth proxies</a>.</li>
+  </ul>
+
+  <h3>A mini PC, e.g. Dell OptiPlex 3040 Micro (i5-6400T, 8 GB, 240 GB SSD)</h3>
+  <p>A great choice: far faster than a Green, and second-hand ones are cheap. 8 GB RAM and a 240 GB SSD are plenty. It has <b>no smart home radios</b>, and Bluetooth is usually missing or unreliable, so plan on the same extras as the Green:</p>
+  <ul class="bullets">
+    <li>Zigbee and/or Thread: <a href="https://www.home-assistant.io/connect/zbt-2/">ZBT-2</a> (two for both) + USB extension cable</li>
+    <li>Z-Wave: <a href="https://www.home-assistant.io/connect/zwa-2/">ZWA-2</a></li>
+    <li>Bluetooth: <a href="https://esphome.io/projects/?type=bluetooth">ESPHome Bluetooth proxies</a></li>
+  </ul>
+  <div class="note"><b class="callout-title">Replace Windows with Home Assistant OS</b>Don't keep Windows 11 and run Home Assistant in Docker Desktop on it: that's the setup on <a href="index.html">the Windows page</a>, and it can't use USB radios. Instead install <b>Home Assistant OS</b> directly on the SSD (this erases Windows), following <a href="https://www.home-assistant.io/installation/generic-x86-64">the Generic x86-64 guide</a>. In the BIOS, turn off <i>Secure Boot</i> and set <i>After Power Loss</i> to <i>Power On</i> so it restarts by itself after a power cut. Then restore your backup from the Windows trial.</div>
+</section>
+
+<footer class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400"><a href="index.html">Home Assistant on Windows</a> · Home Assistant documentation: <a href="https://www.home-assistant.io/integrations/">home-assistant.io/integrations</a></footer>
+
+</main>
+</body>
+</html>

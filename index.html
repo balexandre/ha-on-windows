@@ -135,6 +135,7 @@
   </div>
 
   <p class="mt-2 text-lg text-slate-500 dark:text-slate-400">Try Home Assistant on your own PC with Docker Desktop and PowerShell, before buying any hardware.</p>
+  <p class="text-sm">Planning what to buy? Read <a href="protocols.html">Smart home protocols</a>: Zigbee, Wi-Fi, Matter, Z-Wave, Thread and Bluetooth compared, plus the extra hardware you need.</p>
 
   <div class="mt-4 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
     <div class="rounded-lg bg-sky-50 px-3.5 py-3 dark:bg-sky-950/50"><b class="block text-[15px] text-slate-900 dark:text-white">About 30 minutes</b><span class="text-sm text-slate-500 dark:text-slate-400">most of it is downloading</span></div>
@@ -301,7 +302,7 @@ docker rm -f homeassistant</pre></div>
 <section class="card">
   <h2>Good to know</h2>
   <ul class="bullets">
-    <li><b>USB sticks (Zigbee, Z-Wave, Bluetooth) don't work in this setup.</b> Docker Desktop can't pass USB devices to Home Assistant. Wi-Fi and cloud devices are fine.</li>
+    <li><b>USB sticks (Zigbee, Z-Wave, Bluetooth) don't work in this setup.</b> Docker Desktop can't pass USB devices to Home Assistant. Wi-Fi and cloud devices are fine. Not sure what Zigbee, Thread or Matter are? See <a href="protocols.html">Smart home protocols</a>.</li>
     <li><b>This is for trying it out.</b> If you like it, a small always-on device (Home Assistant Green, a Raspberry Pi or a mini PC) is better: it uses little power, finds devices automatically and supports USB sticks and add-ons. You can move your setup over with a backup: <b>Settings → System → Backups</b>.</li>
     <li><b>Make a backup</b> of the <code>HomeAssistant</code> folder from time to time. That folder <i>is</i> your Home Assistant.</li>
   </ul>
@@ -313,7 +314,7 @@ docker image rm ghcr.io/home-assistant/home-assistant:stable</pre></div>
   <p>Then delete the folder <code>C:\Users\&lt;you&gt;\HomeAssistant</code>, and uninstall Docker Desktop from <b>Settings → Apps</b> if you don't need it anymore.</p>
 </section>
 
-<footer class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">Home Assistant documentation: <a href="https://www.home-assistant.io/installation/">home-assistant.io/installation</a></footer>
+<footer class="mt-8 text-center text-sm text-slate-500 dark:text-slate-400"><a href="protocols.html">Smart home protocols</a> · Home Assistant documentation: <a href="https://www.home-assistant.io/installation/">home-assistant.io/installation</a></footer>
 
 </main>
 </body>
